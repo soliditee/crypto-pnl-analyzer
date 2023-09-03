@@ -1,0 +1,24 @@
+{
+  "name": "crypto-pnl-analyzer",
+  "version": "1.0.0",
+  "description": "",
+  "main": "main.js",
+  "scripts": {
+    "test": "jest",
+    "start": "node main.js"
+  },
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "jest": "^29.1.2"
+  },
+  "dependencies": {
+    "alchemy-sdk": "^2.10.0",
+    "axios": "^1.4.0",
+    "dotenv": "^16.3.1",
+    "ethers": "^6.7.0",
+    "mariadb": "^3.2.0",
+    "sequelize": "^6.30.0",
+    "sequelize-cli": "^6.6.0"
+  }
+}
