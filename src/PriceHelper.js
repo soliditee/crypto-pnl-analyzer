@@ -1,6 +1,6 @@
-const axios = require("axios")
-const Sequelize = require("sequelize")
-const db = require("../models/index")
+import axios from "axios"
+import { Op } from "sequelize"
+import db from "../models/index.cjs"
 
 const PriceHelper = {
   saveETHPriceToDB: async function (responseData, period) {
@@ -19,8 +19,8 @@ const PriceHelper = {
     const row = await db.PriceInUSD.findOne({
       where: {
         symbol: "ETH",
-        from: { [Sequelize.Op.lte]: timestampInSeconds },
-        to: { [Sequelize.Op.gte]: timestampInSeconds },
+        from: { [Op.lte]: timestampInSeconds },
+        to: { [Op.gte]: timestampInSeconds },
       },
     })
     if (row) {
@@ -66,4 +66,4 @@ const PriceHelper = {
   },
 }
 
-module.exports = PriceHelper
+export default PriceHelper

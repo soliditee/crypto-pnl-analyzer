@@ -5,7 +5,7 @@ const { parse } = require("dotenv")
 const contractHelper = require("./ContractHelper")
 const tokenHelper = require("./TokenHelper")
 
-const ERC20Transfer = {
+const ERC20TransferBackup = {
   DIRECTION_BUY: "buy",
   DIRECTION_SELL: "sell",
   provider: contractHelper.provider,
@@ -263,4 +263,4 @@ const ERC20Transfer = {
   },
 }
 
-module.exports = ERC20Transfer
+module.exports = ERC20TransferBackup

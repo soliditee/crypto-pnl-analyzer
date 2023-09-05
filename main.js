@@ -1,7 +1,8 @@
-require("dotenv").config()
-const ph = require("./src/PriceHelper")
-const erc20Transfer = require("./src/ERC20Transfer")
-const util = require("./src/Utility")
+import { parse } from "dotenv"
+import ph from "./src/PriceHelper.js"
+import util from "./src/Utility.js"
+import contractHelper from "./src/ContractHelper.js"
+import erc20Helper from "./src/ERC20TransferAlchemy.js"
 
 async function main() {
   // const currentTimestampInSeconds = Math.floor(Date.now() / 1000)
@@ -9,9 +10,11 @@ async function main() {
   // const currentTimestampInSeconds = 1688872265
   // util.debugLog(await ph.getETHPriceInUSD(currentTimestampInSeconds))
   // util.debugLog(await wh.getBlockNumberByTimestamp(currentTimestampInSeconds))
-
   // const transferList = await erc20Transfer.getTransferEventLogsFromTx(txHashSell, mainWallet)
-  await erc20Transfer.analyzeERC20Transfers(phoenixWallet)
+  // await erc20Transfer.analyzeERC20Transfers(process.env.phoenixWallet)
+  // const txList = await contractHelper.fetchTransferTxByAddress(process.env.mainWallet)
+  // writeTextToFile(`./logs/alchemy_tx_main.json`, jsonToString(txList))
+  await erc20Helper.analyzeERC20Transfers(process.env.mainWallet)
 }
 
 main()

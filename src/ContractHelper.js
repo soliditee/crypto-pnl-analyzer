@@ -1,12 +1,18 @@
-const axios = require("axios")
-const util = require("./Utility")
-const { ethers, Interface } = require("ethers")
-const { parse } = require("dotenv")
+import { parse } from "dotenv"
+import axios from "axios"
+import util from "./Utility.js"
+import { ethers } from "ethers"
+import { Alchemy, Network } from "alchemy-sdk"
 
 const ContractHelper = {
   ETHERSCAN_BASE_URL: "https://api.etherscan.io/api",
   ETHER_MAX_BLOCK: "27025780",
   provider: new ethers.JsonRpcProvider(`https://eth-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY}`),
+  alchemyConfig: {
+    apiKey: process.env.ALCHEMY_API_KEY,
+    network: Network.ETH_MAINNET,
+  },
+  // Caching to speed up API calls
   cachedABI: {},
   cachedSymbol: {},
   cachedDecimals: {},
@@ -17,10 +23,67 @@ const ContractHelper = {
 
   isContractAddress: async function (address) {
     try {
-      const code = await this.provider.getCode(address)
-      return code !== "0x" && code !== "0x0"
+      return await this.alchemy.core.isContractAddress(address)
     } catch (error) {
       throw new Error("Error checking contract address: " + error.message)
+    }
+  },
+
+  /**
+   * Return lists of external, internal and erc20 transfers from/to the given address
+   * @param {string} address
+   * @returns {Object}
+   */
+  fetchTransferTxByAddress: async function (address, categories = ["external"]) {
+    try {
+      let settings = {
+        fromBlock: Number(process.env.START_BLOCK),
+        toBlock: "latest",
+        toAddress: address,
+        withMetadata: false,
+        excludeZeroValue: true,
+        maxCount: "0x3e8", // 1000
+        category: categories,
+        order: "asc",
+      }
+
+      let txList = {}
+      txList.transfersTo = await this.getTransfersFromAlchemy(settings)
+      // Switch to filter by fromAddress
+      delete settings.toAddress
+      settings["fromAddress"] = address
+      txList.transfersFrom = await this.getTransfersFromAlchemy(settings)
+
+      return txList
+    } catch (error) {
+      throw new Error(`Error fetching internal tx for ${address} - ` + error.message)
+    }
+  },
+
+  getTransfersFromAlchemy: async function (settings) {
+    try {
+      let pageKey = undefined
+      let transferList = []
+      do {
+        if (pageKey) {
+          settings.pageKey = pageKey
+          pageKey = undefined
+        }
+        const alchemy = new Alchemy(this.alchemyConfig)
+        const jsonResult = await alchemy.core.getAssetTransfers(settings)
+        if (jsonResult.pageKey) {
+          pageKey = jsonResult.pageKey
+        }
+        if (jsonResult.transfers) {
+          transferList.push(...jsonResult.transfers)
+        }
+        return transferList
+        if (pageKey) {
+          util.sleep(50)
+        }
+      } while (pageKey)
+    } catch (error) {
+      throw new Error(`Error fetching Transers ${jsonToString(settings)} - ` + error.message)
     }
   },
 
@@ -64,7 +127,7 @@ const ContractHelper = {
     }
     const url = util.composeURL(this.ETHERSCAN_BASE_URL, params)
     try {
-      const response = await axios.get(url)
+      const response = await get(url)
       return response.data.result
     } catch (error) {
       throw new Error(`Error fetching contract ABI for ${walletAddress}: ` + error.message)
@@ -87,7 +150,7 @@ const ContractHelper = {
     }
     const url = util.composeURL(this.ETHERSCAN_BASE_URL, params)
     try {
-      const response = await axios.get(url)
+      const response = await get(url)
       return response.data.result
     } catch (error) {
       throw new Error(`Error fetching normal tx for wallet ${walletAddress}: ` + error.message)
@@ -103,7 +166,7 @@ const ContractHelper = {
     }
     const url = util.composeURL(this.ETHERSCAN_BASE_URL, params)
     try {
-      const response = await axios.get(url)
+      const response = await get(url)
       return response.data.result
     } catch (error) {
       throw new Error(`Error fetching Internal Tx for txHash ${inputTxHash}: ` + error.message)
@@ -134,7 +197,7 @@ const ContractHelper = {
 
   getBlockNumberByTimestamp: async function (timestampInSeconds) {
     const url = `https://api.etherscan.io/api?module=block&action=getblocknobytime&timestamp=${timestampInSeconds}&closest=before&apikey=${this.getEtherscanAPIKey()}`
-    const response = await axios.get(url)
+    const response = await get(url)
     if (response.data.message == "OK") {
       return parseInt(response.data.result)
     } else {
@@ -150,4 +213,4 @@ const ContractHelper = {
   },
 }
 
-module.exports = ContractHelper
+export default ContractHelper

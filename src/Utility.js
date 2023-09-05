@@ -1,4 +1,4 @@
-const fs = require("fs")
+import fs from "fs"
 
 const Utility = {
   debugLog: function (message) {
@@ -20,6 +20,10 @@ const Utility = {
   jsonToString: function (jsonObject) {
     return JSON.stringify(jsonObject, (key, value) => (typeof value === "bigint" ? value.toString() + "n" : value))
   },
+
+  sleep: function (miliseconds) {
+    return new Promise((resolve) => setTimeout(resolve, miliseconds))
+  },
 }
 
-module.exports = Utility
+export default Utility
