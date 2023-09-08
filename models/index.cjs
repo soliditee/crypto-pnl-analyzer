@@ -36,5 +36,7 @@ db.Sequelize = Sequelize
 
 module.exports = db
 
+// yarn sequelize-cli migration:generate --name [name_of_your_migration]
 // yarn sequelize-cli model:generate --name PriceInUSD --attributes symbol:string,from:BIGINT,to:BIGINT
+// yarn sequelize-cli model:generate --name Token --attributes address:string,symbol:string,name:string,maxTotalSupply:BIGINT
 // yarn sequelize-cli db:migrate

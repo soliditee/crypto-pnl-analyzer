@@ -24,6 +24,14 @@ const Utility = {
   sleep: function (miliseconds) {
     return new Promise((resolve) => setTimeout(resolve, miliseconds))
   },
+
+  convertTo18Decimals: function (inputAmount, inputDecimals) {
+    // Calculate the conversion factor to adjust to 18 decimals
+    const conversionFactor = BigInt(10) ** BigInt(18 - inputDecimals)
+    // Convert the amount to 18 decimals
+    const amount = inputAmount * conversionFactor
+    return { amount, decimals: 18 }
+  },
 }
 
 export default Utility

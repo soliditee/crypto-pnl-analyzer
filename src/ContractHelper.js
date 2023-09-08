@@ -3,6 +3,7 @@ import axios from "axios"
 import util from "./Utility.js"
 import { ethers } from "ethers"
 import { Alchemy, Network } from "alchemy-sdk"
+import tokenHelper from "./TokenHelper.js"
 
 const ContractHelper = {
   ETHERSCAN_BASE_URL: "https://api.etherscan.io/api",
@@ -210,6 +211,10 @@ const ContractHelper = {
     const lowercaseAddress2 = addressB.toLowerCase()
 
     return lowercaseAddress1 === lowercaseAddress2
+  },
+
+  isETHorWETH: function (tokenAddress) {
+    return this.isSameAddress(tokenAddress, tokenHelper.WETH_ADDRESS) || this.isSameAddress(tokenAddress, tokenHelper.ETH_ADDRESS)
   },
 }
 

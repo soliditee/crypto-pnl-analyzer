@@ -14,7 +14,8 @@ async function main() {
   // await erc20Transfer.analyzeERC20Transfers(process.env.phoenixWallet)
   // const txList = await contractHelper.fetchTransferTxByAddress(process.env.mainWallet)
   // writeTextToFile(`./logs/alchemy_tx_main.json`, jsonToString(txList))
-  await erc20Helper.analyzeERC20Transfers(process.env.mainWallet)
+  // await erc20Helper.analyzeERC20Transfers(process.env.mainWallet)
+  await erc20Helper.analyzeERC20Transfers(process.env.phoenixWallet)
 }
 
 main()
