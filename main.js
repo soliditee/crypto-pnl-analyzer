@@ -3,6 +3,7 @@ import ph from "./src/PriceHelper.js"
 import util from "./src/Utility.js"
 import contractHelper from "./src/ContractHelper.js"
 import erc20Helper from "./src/ERC20TransferAlchemy.js"
+import pnl from "./src/ProfitAndLoss.js"
 
 async function main() {
   // const currentTimestampInSeconds = Math.floor(Date.now() / 1000)
@@ -15,7 +16,8 @@ async function main() {
   // const txList = await contractHelper.fetchTransferTxByAddress(process.env.mainWallet)
   // writeTextToFile(`./logs/alchemy_tx_main.json`, jsonToString(txList))
   // await erc20Helper.analyzeERC20Transfers(process.env.mainWallet)
-  await erc20Helper.analyzeERC20Transfers(process.env.phoenixWallet)
+  // await erc20Helper.analyzeERC20Transfers(process.env.phoenixWallet)
+  await pnl.analyzeProfitAndLoss(process.env.phoenixWallet)
 }
 
 main()

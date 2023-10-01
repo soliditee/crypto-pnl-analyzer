@@ -36,7 +36,11 @@ db.Sequelize = Sequelize
 
 module.exports = db
 
-// yarn sequelize-cli migration:generate --name [name_of_your_migration]
 // yarn sequelize-cli model:generate --name PriceInUSD --attributes symbol:string,from:BIGINT,to:BIGINT
 // yarn sequelize-cli model:generate --name Token --attributes address:string,symbol:string,name:string,maxTotalSupply:BIGINT
+// yarn sequelize-cli model:generate --name Owner --attributes address:string,alias:string
+// yarn sequelize-cli model:generate --name Wallet --attributes address:string,alias:string
+// yarn sequelize-cli model:generate --name Swap --attributes ownerId:integer,walletId:integer,chain:string,txnHash:string,blockNum:BIGINT,timestamp:BIGINT,isETHInvolved:boolean,gasCostWei:BIGINT,gasCostUSD:decimal,ethPriceUSD:decimal,txnValueUSD:decimal,buyAmount:BIGINT,buyCA:string,sellAmount:BIGINT,sellCA:string
+
+// yarn sequelize-cli migration:generate --name [name_of_your_migration]
 // yarn sequelize-cli db:migrate

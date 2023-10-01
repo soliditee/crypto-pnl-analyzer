@@ -1,30 +1,27 @@
 "use strict"
 const { Model } = require("sequelize")
 module.exports = (sequelize, DataTypes) => {
-  class Token extends Model {
+  class Wallet extends Model {
     /**
      * Helper method for defining associations.
      * This method is not a part of Sequelize lifecycle.
      * The `models/index` file will call this method automatically.
      */
     static associate(models) {
-      // define association here
+      Wallet.belongsTo(models.Owner, {
+        foreignKey: "ownerId", // This should match the column name you defined in the migration
+      })
     }
   }
-  Token.init(
+  Wallet.init(
     {
       address: DataTypes.STRING,
-      symbol: DataTypes.STRING,
-      name: DataTypes.STRING,
-      maxTotalSupply: DataTypes.BIGINT,
-      chain: DataTypes.STRING,
-      decimals: DataTypes.INTEGER,
-      isHoneyPot: DataTypes.INTEGER,
+      alias: DataTypes.STRING,
     },
     {
       sequelize,
-      modelName: "Token",
+      modelName: "Wallet",
     }
   )
-  return Token
+  return Wallet
 }

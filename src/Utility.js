@@ -1,6 +1,8 @@
 import fs from "fs"
 
 const Utility = {
+  BIG_1018: BigInt(10) ** BigInt(18),
+
   debugLog: function (message) {
     console.log(message)
   },
@@ -18,7 +20,7 @@ const Utility = {
   },
 
   jsonToString: function (jsonObject) {
-    return JSON.stringify(jsonObject, (key, value) => (typeof value === "bigint" ? value.toString() + "n" : value))
+    return JSON.stringify(jsonObject, (key, value) => (typeof value === "bigint" ? value.toString() : value))
   },
 
   sleep: function (miliseconds) {
@@ -31,6 +33,10 @@ const Utility = {
     // Convert the amount to 18 decimals
     const amount = inputAmount * conversionFactor
     return { amount, decimals: 18 }
+  },
+
+  absBigInt: function (num) {
+    return num < 0n ? -num : num
   },
 }
 

@@ -111,7 +111,7 @@ const ContractHelper = {
     }
   },
 
-  fetchERC20TransfersByWallet: async function (walletAddress) {
+  fetchERC20TransfersByWalletEtherScan: async function (walletAddress) {
     const txPerPage = 1000 // Number of transactions per page
     var page = 1
     var params = {
@@ -120,18 +120,33 @@ const ContractHelper = {
       address: walletAddress,
       page: page,
       offset: txPerPage,
-      // startblock: process.env.START_BLOCK,
-      startblock: 18047290,
+      startblock: process.env.START_BLOCK,
       endblock: this.ETHER_MAX_BLOCK,
       sort: "asc",
       apikey: this.getEtherscanAPIKey(),
     }
-    const url = util.composeURL(this.ETHERSCAN_BASE_URL, params)
     try {
-      const response = await get(url)
-      return response.data.result
+      let resultCount = 0
+      let resultList = []
+      do {
+        params.page = page
+        let url = util.composeURL(this.ETHERSCAN_BASE_URL, params)
+        if (page > 1) {
+          // Sleep to avoid reaching API limit
+          util.sleep(200)
+        }
+        let response = await axios.get(url)
+        if (response.data.result) {
+          resultList = [...resultList, ...response.data.result]
+          resultCount = response.data.result.length
+        } else {
+          resultCount = 0
+        }
+        page += 1
+      } while (resultCount == txPerPage)
+      return resultList
     } catch (error) {
-      throw new Error(`Error fetching contract ABI for ${walletAddress}: ` + error.message)
+      throw new Error(`Error fetching ERC20 Transfers from EtherScan for ${walletAddress}: ` + error.message)
     }
   },
 

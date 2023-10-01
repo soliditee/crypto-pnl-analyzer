@@ -1,7 +1,7 @@
 "use strict"
 const { Model } = require("sequelize")
 module.exports = (sequelize, DataTypes) => {
-  class Token extends Model {
+  class Owner extends Model {
     /**
      * Helper method for defining associations.
      * This method is not a part of Sequelize lifecycle.
@@ -9,22 +9,21 @@ module.exports = (sequelize, DataTypes) => {
      */
     static associate(models) {
       // define association here
+      Owner.hasMany(models.Wallet, {
+        foreignKey: "ownerId", // This should match the column name you defined in the migration
+        as: "wallets", // This creates a virtual property name for accessing posts
+      })
     }
   }
-  Token.init(
+  Owner.init(
     {
       address: DataTypes.STRING,
-      symbol: DataTypes.STRING,
-      name: DataTypes.STRING,
-      maxTotalSupply: DataTypes.BIGINT,
-      chain: DataTypes.STRING,
-      decimals: DataTypes.INTEGER,
-      isHoneyPot: DataTypes.INTEGER,
+      alias: DataTypes.STRING,
     },
     {
       sequelize,
-      modelName: "Token",
+      modelName: "Owner",
     }
   )
-  return Token
+  return Owner
 }
