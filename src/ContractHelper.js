@@ -38,7 +38,7 @@ const ContractHelper = {
   fetchTransferTxByAddress: async function (address, categories = ["external"]) {
     try {
       let settings = {
-        fromBlock: Number(process.env.START_BLOCK),
+        fromBlock: "0x" + Number(process.env.START_BLOCK).toString(16),
         toBlock: "latest",
         toAddress: address,
         withMetadata: false,
@@ -65,12 +65,14 @@ const ContractHelper = {
     try {
       let pageKey = undefined
       let transferList = []
+      const alchemy = new Alchemy(this.alchemyConfig)
       do {
         if (pageKey) {
           settings.pageKey = pageKey
           pageKey = undefined
+        } else {
+          delete settings.pageKey
         }
-        const alchemy = new Alchemy(this.alchemyConfig)
         const jsonResult = await alchemy.core.getAssetTransfers(settings)
         if (jsonResult.pageKey) {
           pageKey = jsonResult.pageKey
@@ -78,13 +80,13 @@ const ContractHelper = {
         if (jsonResult.transfers) {
           transferList.push(...jsonResult.transfers)
         }
-        return transferList
         if (pageKey) {
           util.sleep(50)
         }
       } while (pageKey)
+      return transferList
     } catch (error) {
-      throw new Error(`Error fetching Transers ${jsonToString(settings)} - ` + error.message)
+      throw new Error(`Error fetching Transers ${util.jsonToString(settings)} - ` + error.message)
     }
   },
 
@@ -230,6 +232,10 @@ const ContractHelper = {
 
   isETHorWETH: function (tokenAddress) {
     return this.isSameAddress(tokenAddress, tokenHelper.WETH_ADDRESS) || this.isSameAddress(tokenAddress, tokenHelper.ETH_ADDRESS)
+  },
+
+  isNullorDead: function (address) {
+    return this.isSameAddress(address, tokenHelper.NULL_ADDRESS) || this.isSameAddress(address, tokenHelper.DEAD_ADDRESS)
   },
 }
 

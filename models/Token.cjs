@@ -16,7 +16,7 @@ module.exports = (sequelize, DataTypes) => {
       address: DataTypes.STRING,
       symbol: DataTypes.STRING,
       name: DataTypes.STRING,
-      maxTotalSupply: DataTypes.BIGINT,
+      maxTotalSupply: DataTypes.STRING,
       chain: DataTypes.STRING,
       decimals: DataTypes.INTEGER,
       isHoneyPot: DataTypes.INTEGER,

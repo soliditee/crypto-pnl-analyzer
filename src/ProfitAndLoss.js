@@ -4,7 +4,7 @@ import tokenHelper from "./TokenHelper.js"
 import priceHelper from "./PriceHelper.js"
 import util from "./Utility.js"
 import walletManager from "./WalletManager.js"
-import { ethers } from "ethers"
+import { computeHmac, ethers } from "ethers"
 import csvWriter from "csv-writer"
 await tokenHelper.init()
 
@@ -23,14 +23,15 @@ const ProfitAndLoss = {
     let tokensHoldingNotHoneyPot = {}
     let countToken = 0
     for (let ca of Object.keys(swapsGrouped)) {
-      // if (ca != "0x43d7e65b8ff49698d9550a7f315c87e67344fb59") {
-      //   continue
-      // }
+      if (ca != "0x43d7e65b8ff49698d9550a7f315c87e67344fb59") {
+        continue
+      }
       countToken++
       let token = tokenHelper.getFromCache(ca)
       console.log(`Pnl for token ${token.symbol} - ${ca}`)
       if (token.isHoneyPot === null) {
         await tokenHelper.checkHoneyPot(ca)
+        token = tokenHelper.getFromCache(ca)
       }
       let pnlInfo = this.calculatePnlOneToken(swapsGrouped[ca])
       pnlInfo.ca = ca
@@ -58,9 +59,10 @@ const ProfitAndLoss = {
         let priceUSD18 = 0n
         if (tokensHoldingNotHoneyPot[ca] && tokenPriceList[ca]) {
           let tokenPriceInfo = tokenPriceList[ca]
-          priceUSD18 = tokenPriceInfo.priceUSD18
           if (tokenPriceInfo.isReserveMissing) {
             pnlInfo.isHoneyPot = 1
+          } else {
+            priceUSD18 = tokenPriceInfo.priceUSD18
           }
         }
         let unrealizedPnl18 = (priceUSD18 * pnlInfo.currentBalance18) / util.BIG_1018 - pnlInfo.currentBalanceUSDCost18
@@ -119,6 +121,8 @@ const ProfitAndLoss = {
   },
 
   calculatePnlOneToken: function (tokenSwapList) {
+    // const costBasisMethod = "fifo"
+    const costBasisMethod = "average"
     let costBasisQueue = []
     let totalPnLUSD18 = 0n
     let totalPnLETH18 = 0n
@@ -144,7 +148,20 @@ const ProfitAndLoss = {
         if (maxBalance18 < currentBalance18) {
           maxBalance18 = currentBalance18
         }
-        costBasisQueue.push(costBasis)
+        if (costBasisMethod == "fifo" || costBasisQueue.length == 0) {
+          costBasisQueue.push(costBasis)
+        } else if (costBasisMethod == "average") {
+          let totalAmount18 = costBasis.amount18 + costBasisQueue[0].amount18
+          let totalCostUSD18 = (costBasis.amount18 * costBasis.priceUSD18 + costBasisQueue[0].amount18 * costBasisQueue[0].priceUSD18) / util.BIG_1018
+          let totalCostETH18 = (costBasis.amount18 * costBasis.priceETH18 + costBasisQueue[0].amount18 * costBasisQueue[0].priceETH18) / util.BIG_1018
+          let costBasisAverage = {
+            amount18: totalAmount18,
+            priceUSD18: (totalCostUSD18 * util.BIG_1018) / totalAmount18,
+            priceETH18: (totalCostETH18 * util.BIG_1018) / totalAmount18,
+          }
+          // Reset cost basis queue to have the average price
+          costBasisQueue = [costBasisAverage]
+        }
       } else if (ch.isETHorWETH(swap.buyCA)) {
         // This is a sell tx, which will offset the queue
         let sellAmount18 = BigInt(swap.sellAmount)
@@ -160,6 +177,9 @@ const ProfitAndLoss = {
             totalPnLUSD18 += (sellAmount18 * (sellPriceUSD18 - costBasis.priceUSD18)) / util.BIG_1018
             costBasisQueue[0].amount18 -= sellAmount18
             sellAmount18 = 0n
+            if (costBasisQueue[0].amount18 == 0n) {
+              costBasisQueue.shift()
+            }
           } else {
             // If we are selling more than the amount in the first costbasis entry
             totalPnLUSD18 += (costBasis.amount18 * (sellPriceUSD18 - costBasis.priceUSD18)) / util.BIG_1018

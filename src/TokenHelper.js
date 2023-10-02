@@ -3,7 +3,7 @@ import util from "./Utility.js"
 import db from "../models/index.cjs"
 
 const TokenHelper = {
-  HONEYPOTIS_BASE_URL: "https://api.honeypot.is/v2/IsHoneypot",
+  HONEYPOT_BASE_URL: "https://api.honeypot.is/v2/IsHoneypot",
 
   WETH_ADDRESS: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
   ETH_ADDRESS: "0x0000000000000000000000000000000000000eth",
@@ -13,33 +13,27 @@ const TokenHelper = {
   cachedToken: {},
 
   init: async function () {
-    this.cachedToken[this.ETH_ADDRESS] = { address: this.ETH_ADDRESS, symbol: "ETH", name: "ETH", decimals: 18 }
+    const ethToken = await db.Token.findOrCreate({
+      where: { address: this.ETH_ADDRESS, chain: "eth" },
+      defaults: { symbol: "ETH", name: "ETH", decimals: 18, isHoneyPot: 0 },
+    })
     const tokenList = await db.Token.findAll({
       where: { chain: "eth" },
     })
     for (let token of tokenList) {
-      await this.addToCache(token.address, token.symbol, token.name, token.decimals, false, token.isHoneyPot)
+      this.cachedToken[token.address] = token
     }
   },
 
-  addToCache: async function (address, symbol, name, decimals = 18, shouldSaveToDB = true, isHoneyPot = null) {
+  addToCache: async function (address, symbol, name, decimals = 18, isHoneyPot = null) {
     address = address.toLowerCase()
     let token = this.cachedToken[address]
     if (!token) {
-      token = {
-        address,
-        symbol,
-        name,
-        isHoneyPot,
-      }
+      token = await db.Token.findOrCreate({
+        where: { address: address, chain: "eth" },
+        defaults: { symbol, name, decimals, isHoneyPot },
+      })
       this.cachedToken[address] = token
-      // Also store in DB
-      if (shouldSaveToDB) {
-        await db.Token.findOrCreate({
-          where: { address: address, chain: "eth" },
-          defaults: { symbol, name, decimals, isHoneyPot },
-        })
-      }
     }
     return token
   },
@@ -55,7 +49,7 @@ const TokenHelper = {
         chainID: chainId,
         address,
       }
-      const rawResponse = await axios.get(util.composeURL(this.HONEYPOTIS_BASE_URL, params))
+      const rawResponse = await axios.get(util.composeURL(this.HONEYPOT_BASE_URL, params))
       await util.sleep(50)
       if (rawResponse.data.honeypotResult) {
         const isHoneyPot = rawResponse.data.honeypotResult.isHoneypot ? 1 : 0
@@ -63,22 +57,26 @@ const TokenHelper = {
         if (tokenFromCache) {
           const previousIsHoneyPot = tokenFromCache.isHoneyPot
           if (previousIsHoneyPot !== isHoneyPot) {
-            let tokenFromDB = await db.Token.findOne({
-              where: { address: address, chain: "eth" },
-            })
+            let tokenFromDB = this.getFromCache(address)
             // Update DB
-            if (tokenFromDB) {
-              tokenFromDB.isHoneyPot = isHoneyPot
-              await tokenFromDB.save()
-            }
+            tokenFromDB.isHoneyPot = isHoneyPot
+            await tokenFromDB.save()
             // Update cache
-            tokenFromCache.isHoneyPot = isHoneyPot
-            this.cachedToken[address] = tokenFromCache
+            this.cachedToken[address] = tokenFromDB
           }
         }
       }
     } catch (error) {
-      throw new Error(`Error checking HoneyPot for ${address}` + error.message)
+      console.log(`Error checking HoneyPot for ${address} - ` + error.message)
+      if (error.response.status == 404) {
+        const isHoneyPot = 1
+        let tokenFromDB = this.getFromCache(address)
+        // Update DB
+        tokenFromDB.isHoneyPot = isHoneyPot
+        await tokenFromDB.save()
+        // Update cache
+        this.cachedToken[address] = tokenFromDB
+      }
     }
   },
 }

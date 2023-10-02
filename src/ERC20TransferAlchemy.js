@@ -23,15 +23,16 @@ const ERC20TransferAlchemy = {
     const esTransfersGrouped = await this.groupEtherScanERC20TransfersByTxHash(rawERC20Transfers)
     // util.writeTextToFile(`./logs/esERC20Grouped.json`, util.jsonToString(esTransfersGrouped))
     const rawTxList = await ch.fetchTransferTxByAddress(walletAddress, [this.CATEGORY_ERC20, this.CATEGORY_EXTERNAL, this.CATEGORY_INTERNAL])
+    // util.writeTextToFile(`./logs/rawTxList.json`, util.jsonToString(rawTxList))
     const txGrouped = this.groupAllTransfersByTxHash(rawTxList)
-    // util.writeTextToFile(`./logs/txGrouped.json`, util.jsonToString(txGrouped))
+    util.writeTextToFile(`./logs/txGrouped.json`, util.jsonToString(txGrouped))
     const swapInfoList = await this.extractSwapInfoFromTxGrouped(txGrouped, esTransfersGrouped)
     for (let txHash of Object.keys(swapInfoList)) {
       let swapInfo = await this.deteremineTxValueOfSwap(swapInfoList[txHash])
       swapInfoList[txHash] = swapInfo
       await walletManager.saveSwapInfo(txHash, swapInfo, wallet)
     }
-    // util.writeTextToFile(`./logs/swapInfoList.json`, util.jsonToString(swapInfoList))
+    util.writeTextToFile(`./logs/swapInfoList.json`, util.jsonToString(swapInfoList))
   },
 
   deteremineTxValueOfSwap: async function (swapInfo) {
@@ -92,8 +93,8 @@ const ERC20TransferAlchemy = {
     for (let txHash of keyList) {
       let txFromList = txGrouped[txHash].from
       let txToList = txGrouped[txHash].to
-      let rawSellList = await this.extractTransferInfoFromOneTxOneDirection(txFromList)
-      let rawBuyList = await this.extractTransferInfoFromOneTxOneDirection(txToList)
+      let rawSellList = await this.extractTransferInfoFromOneTxOneDirection(txFromList, "sell")
+      let rawBuyList = await this.extractTransferInfoFromOneTxOneDirection(txToList, "buy")
       let listInfo = this.cancelOutBuyAndSellFromSwapInfo(rawBuyList, rawSellList)
       listInfo = this.resolveSwapExceptions(listInfo.buyList, listInfo.sellList, txHash, txGrouped)
       let buyList = listInfo.buyList
@@ -164,7 +165,7 @@ const ERC20TransferAlchemy = {
           isBuyingETH = true
         }
       }
-      if (!ch.isETHorWETH(sellListKeys[0])) {
+      if (!ch.isETHorWETH(sellListKeys[0]) && isBuyingETH) {
         // If we are selling non-eth and buying eth/weth, ignore other tokens that we received
         for (let tokenAddress of buyListKeys) {
           if (!ch.isETHorWETH(tokenAddress)) {
@@ -200,7 +201,7 @@ const ERC20TransferAlchemy = {
     for (let transfer of transferList) {
       if (ch.isSameAddress(transfer.rawContract.address, tokenAddress)) {
         let toAddress = transfer.to
-        if (ch.isSameAddress(toAddress, tokenHelper.DEAD_ADDRESS) || ch.isSameAddress(toAddress, tokenHelper.NULL_ADDRESS)) {
+        if (ch.isNullorDead(toAddress)) {
           return true
         }
       }
@@ -238,7 +239,7 @@ const ERC20TransferAlchemy = {
     return { buyList: newBuyList, sellList: newSellList }
   },
 
-  extractTransferInfoFromOneTxOneDirection: async function (txDirectionList) {
+  extractTransferInfoFromOneTxOneDirection: async function (txDirectionList, direction = "sell") {
     let returnList = {}
     for (let category of [this.CATEGORY_ERC20, this.CATEGORY_EXTERNAL, this.CATEGORY_INTERNAL]) {
       let transferList = txDirectionList[category]
@@ -246,10 +247,14 @@ const ERC20TransferAlchemy = {
         continue
       }
       for (let transfer of transferList) {
+        if ((direction == "sell" && ch.isNullorDead(transfer.to)) || (direction == "buy" && ch.isNullorDead(transfer.from))) {
+          // Do not consider this as a tranfer because we're creating token from null or we're sending token to burn
+          continue
+        }
         let rawDecimals = transfer.rawContract.decimal
         let amount = BigInt(transfer.rawContract.value)
         let decimals = rawDecimals === null ? 0 : parseInt(rawDecimals, 16)
-        // Need to convert all amount to 18 decimals, for easy math later
+        // Need to convert all amounts to 18 decimals, for easy math later
         let newAmountObject = util.convertTo18Decimals(amount, decimals)
         let address = category == this.CATEGORY_ERC20 ? transfer.rawContract.address : tokenHelper.ETH_ADDRESS
         // Btw, cache blockNum
