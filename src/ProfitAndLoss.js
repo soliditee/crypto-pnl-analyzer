@@ -9,6 +9,11 @@ import csvWriter from "csv-writer"
 await tokenHelper.init()
 
 const ProfitAndLoss = {
+  COSTBASIS_FIFO: "fifo",
+  COSTBASIS_AVERAGE: "average",
+  // freebag: calculate similar to average, but if wallet is still holding then use past PnL to offset cost basis of the holding tokens
+  COSTBASIS_FREEBAG: "freebag",
+
   analyzeProfitAndLoss: async function (ownerAddress) {
     const owner = await walletManager.findOwner(ownerAddress)
     if (!owner) {
@@ -23,9 +28,9 @@ const ProfitAndLoss = {
     let tokensHoldingNotHoneyPot = {}
     let countToken = 0
     for (let ca of Object.keys(swapsGrouped)) {
-      if (ca != "0x43d7e65b8ff49698d9550a7f315c87e67344fb59") {
-        continue
-      }
+      // if (ca != "0x43d7e65b8ff49698d9550a7f315c87e67344fb59") {
+      //   continue
+      // }
       countToken++
       let token = tokenHelper.getFromCache(ca)
       console.log(`Pnl for token ${token.symbol} - ${ca}`)
@@ -121,8 +126,7 @@ const ProfitAndLoss = {
   },
 
   calculatePnlOneToken: function (tokenSwapList) {
-    // const costBasisMethod = "fifo"
-    const costBasisMethod = "average"
+    const costBasisMode = this.COSTBASIS_FREEBAG
     let costBasisQueue = []
     let totalPnLUSD18 = 0n
     let totalPnLETH18 = 0n
@@ -148,9 +152,9 @@ const ProfitAndLoss = {
         if (maxBalance18 < currentBalance18) {
           maxBalance18 = currentBalance18
         }
-        if (costBasisMethod == "fifo" || costBasisQueue.length == 0) {
+        if (costBasisMode == this.COSTBASIS_FIFO || costBasisQueue.length == 0) {
           costBasisQueue.push(costBasis)
-        } else if (costBasisMethod == "average") {
+        } else if (costBasisMode == this.COSTBASIS_AVERAGE || costBasisMode == this.COSTBASIS_FREEBAG) {
           let totalAmount18 = costBasis.amount18 + costBasisQueue[0].amount18
           let totalCostUSD18 = (costBasis.amount18 * costBasis.priceUSD18 + costBasisQueue[0].amount18 * costBasisQueue[0].priceUSD18) / util.BIG_1018
           let totalCostETH18 = (costBasis.amount18 * costBasis.priceETH18 + costBasisQueue[0].amount18 * costBasisQueue[0].priceETH18) / util.BIG_1018
@@ -196,8 +200,22 @@ const ProfitAndLoss = {
     }
     if (currentBalance18 > 0n) {
       for (let costBasis of costBasisQueue) {
-        currentBalanceUSDCost18 += (costBasis.amount18 * costBasis.priceUSD18) / util.BIG_1018
-        currentBalanceETHCost18 += (costBasis.amount18 * costBasis.priceETH18) / util.BIG_1018
+        let costUSD18ToAdd = (costBasis.amount18 * costBasis.priceUSD18) / util.BIG_1018
+        let costETH18ToAdd = (costBasis.amount18 * costBasis.priceETH18) / util.BIG_1018
+        if (costBasisMode == this.COSTBASIS_FREEBAG) {
+          if (totalPnLUSD18 > 0n) {
+            let amountToDeductUSD = totalPnLUSD18 >= costUSD18ToAdd ? costUSD18ToAdd : totalPnLUSD18
+            totalPnLUSD18 -= amountToDeductUSD
+            costUSD18ToAdd -= amountToDeductUSD
+          }
+          if (costETH18ToAdd > 0n) {
+            let amountToDeductETH = totalPnLETH18 >= costETH18ToAdd ? costETH18ToAdd : totalPnLETH18
+            totalPnLETH18 -= amountToDeductETH
+            costETH18ToAdd -= amountToDeductETH
+          }
+        }
+        currentBalanceUSDCost18 += costUSD18ToAdd
+        currentBalanceETHCost18 += costETH18ToAdd
       }
     }
     return {
